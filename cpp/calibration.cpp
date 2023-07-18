@@ -16,7 +16,7 @@ struct pattern {
   int col = 10; 
   int size = row*col;
   cv::Size size_cv = cv::Size2i(col, row);
-  double chess_size = 23.0;
+  double chess_size = 23.3;
   pattern(const int& num) {
     num_of_img = num;
     points = num_of_img*size;
