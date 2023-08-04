@@ -29,13 +29,13 @@ int main() {
     {0, 116, 60}
   };
   std::vector<cv::Point2f> img_points = {
-    {310, 303},
-    {436, 246},
-    {244, 268},
-    {311, 248},
-    {441, 202},
-    {372, 183},
-    {241, 219}
+    {316, 317},
+    {435, 247},
+    {257, 276},
+    {315, 274},
+    {440, 210},
+    {377, 182},
+    {254, 235}
   };
   cv::Mat rvec;
   cv::Mat tvec;
@@ -43,6 +43,9 @@ int main() {
   cv::solvePnP(obj_points, img_points, cam_mat, dist_coeffs, rvec, tvec);
   std::cout << rvec << std::endl;
   std::cout << tvec << std::endl;
+  cv::Mat rmat;
+  Rodrigues(rvec, rmat);
+  std::cout << rmat << std::endl;
 }
 
 //g++ -std=c++17 pose_computation.cpp `pkg-config --cflags opencv` `pkg-config --libs opencv`
