@@ -6,6 +6,29 @@
 
 const std::string input_filepath = "/Users/keisaiki/Documents/Lab/3DReconstruction/cpp/info";
 
+const double PI = 3.141592653589793;
+
+class ObjectBox {
+  public:
+    ObjectBox(float x, float y, float z) : _x(x), _y(y), _z(z) {}
+
+    std::vector<cv::Point3f> object_points () {
+      std::vector<cv::Point3f> result = {
+        {0, 0, 0},
+        {_x, 0, 0},
+        {0, _y ,0},
+        {0, 0, _z},
+        {_x, 0, _z},
+        {_x, _y, _z},
+        {0, _y, _z}
+      };
+      return result;
+    }
+
+  private:
+    const float _x, _y, _z;
+};
+
 int main() {
   cv::FileStorage fs(input_filepath + "/cam_mat.xml", cv::FileStorage::READ);
   if (!fs.isOpened()) {
@@ -19,23 +42,16 @@ int main() {
   auto dist_coeffs_filenode = fs["distortion"];
   cam_mat_filenode >> cam_mat;
   dist_coeffs_filenode >> dist_coeffs;
-  std::vector<cv::Point3f> obj_points = {
-    {0, 0, 0},
-    {222, 0, 0},
-    {0, 116, 0},
-    {0, 0, 60},
-    {222, 0, 60},
-    {222, 116, 60},
-    {0, 116, 60}
-  };
+  ObjectBox obj_box(469, 348, 238);
+  std::vector<cv::Point3f> obj_points = obj_box.object_points();
   std::vector<cv::Point2f> img_points = {
-    {316, 317},
-    {435, 247},
-    {257, 276},
-    {315, 274},
-    {440, 210},
-    {377, 182},
-    {254, 235}
+    {302, 365},
+    {367, 319},
+    {212, 342},
+    {303, 287},
+    {370, 259},
+    {292, 247},
+    {211, 271}
   };
   cv::Mat rvec;
   cv::Mat tvec;
@@ -45,7 +61,16 @@ int main() {
   std::cout << tvec << std::endl;
   cv::Mat rmat;
   Rodrigues(rvec, rmat);
-  std::cout << rmat << std::endl;
+  std::cout << rmat/PI*180 << std::endl;
+  //std::cout << tvec.rows << " " << tvec.cols << " " << tvec.channels() <<  std::endl;
+  /*
+  */
+  double len = 0;
+  for (int i = 0; i < 3; i++) len += tvec.at<double>(i, 0)*tvec.at<double>(i, 0);
+  len = sqrt(len);
+  std::cout << len << std::endl;
+  std::cout << rmat*tvec << std::endl;
 }
 
 //g++ -std=c++17 pose_computation.cpp `pkg-config --cflags opencv` `pkg-config --libs opencv`
+//三角形の下の点からカメラまで約2400mm
