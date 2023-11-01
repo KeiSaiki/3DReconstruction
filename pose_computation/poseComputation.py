@@ -1,15 +1,16 @@
 import numpy as np
 import cv2
+import math
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
-def plot_vector(axes, location, vector, color = "red"):
+def plot_vector(axes, location, vector, color="red"):
   axes.quiver(location[0], location[1], location[2],
               vector[0], vector[1], vector[2],
-              color = color, length = 1,
-              arrow_length_ratio = 0.1)
+              color=color, length=1,
+              arrow_length_ratio=0.1)
 
 class ObjectBox:
   def __init__(self):
@@ -29,59 +30,89 @@ class ObjectBox:
       (0, self._y, 0),
       (0, 0, self._z),
       (self._x, 0, self._z),
-      (self._x, self._y, self._z),
       (0, self._y, self._z),
-    ], dtype = "double")
+      (self._x, self._y, self._z),
+    ], dtype="double")
     return result
-
+  
+'''
+in1
 image_points = np.array([
-  (302, 365),
-  (367, 319),
-  (212, 342),
-  (303, 287),
-  (370, 259),
-  (292, 247),
-  (211, 271),
-], dtype = "double")
+  (356, 251),
+  (422, 198),
+  (295, 220),
+  (354, 203),
+  (423, 155),
+  (289, 176),
+  (361, 132),
+], dtype="double")
+'''
+'''
+in2
+image_points = np.array([
+  (349, 322),
+  (474, 226),
+  (265, 238),
+  (352, 262),
+  (493, 164),
+  (255, 178),
+  (390, 104),
+], dtype="double")
+'''
+'''
+in3
+'''
+image_points = np.array([
+  (358, 275),
+  (407, 259),
+  (322, 264),
+  (357, 240),
+  (407, 225),
+  (321, 229),
+  (371, 216),
+], dtype="double")
+
 
 # Camera Intrinsic Paramter
 dist_coeffs = np.array([
-  [3.63211720e-01,
-  -1.93851026e+00,
-  -1.47109243e-04,
-  5.95798535e-04,
-  3.14452169e+00]
+  [3.5503921110220771e-01,
+  -1.8089641384590791e+00,
+  -1.3224112624431249e-03,
+  -1.1764534809794213e-03,
+  2.7810334600309656e+00]
 ])
 camera_matrix = np.array([
-  [508.98721069, 0, 331.12232423],
-  [0, 511.00672888, 243.52320381],
+  [507.67984091855385, 0, 330.27513286880281],
+  [0, 509.84029418345722, 242.96535901758909],
   [0, 0, 1]
-], dtype = "double")
+], dtype="double")
+'''
+fov = 80
+pw = 672
+ph = 504
+fx = 1.0 / (2.0*math.tan(np.radians(fov)/2.0))*pw
+fy = fx
+cx = pw/2.0
+cy = ph/2.0
+camera_matrix = np.array([
+  [fx, 0, cx],
+  [0, fy, cy],
+  [0, 0, 1],
+])
+dist_coeffs = np.zeros((5, 1))
+'''
 
-# ---
-def makeline(img_x, img_y, cam_tvec, cam_rvec):
-  arr = np.array([img_x, img_y, 1])
-  R, _ = cv2.Rodrigues(cam_rvec)
-  arr = arr * camera_matrix.I * np.hstack([R, cam_tvec]).I
-  return np.delete(arr, 3)
-
-def deteremime_point(p1, d1, p2, d2):
-  result = np.array([d1*d1, -d1*d2], [d1*d2, -d2*d2]).I * np.array([(p2-p1)*d1, (p2-p1)*d2])
-  return result
-
-# --------------------------------------
-
-origin = ObjectBox(348, 469, 238)
+origin = ObjectBox(469, 348, 238)
 
 print("Solve Perspective N Point Problem")
 
-print("\nCamera Matrix : ")
+print("\nCamera Matrix")
 print(camera_matrix)
 
 print("\nDistortion Coefficient")
 print(dist_coeffs)
 
-(success, rvec, tvec) = cv2.solvePnP(origin.object_points(), image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
+(success, rvec, tvec) = cv2.solvePnP(origin.object_points(), image_points, camera_matrix, dist_coeffs)
 print("\nTranslation Vector")
 print(tvec)
 
@@ -89,24 +120,30 @@ print("\nRotation Vector")
 print(rvec)
 
 print("\nRotation Matrix")
-R, jacob = cv2.Rodrigues(rvec)
-print(R)
+R_mat, _ = cv2.Rodrigues(rvec)
+print(R_mat)
+
+R_raw = R_mat.T
+t_raw = -R_mat.T @ tvec
+print("\nt_raw")
+print(t_raw)
 
 # 3Dグラフ描画部------------------
 fig = plt.figure(figsize = (8, 6))
-ax = fig.add_subplot(1,1,1,projection='3d')
+ax = fig.add_subplot(1, 1, 1, projection='3d')
 ax.grid()
-ax.set_xlabel("x [m]", fontsize = 12)
-ax.set_ylabel("y [m]", fontsize = 12)
-ax.set_zlabel("z [m]", fontsize = 12)
-ax.set_xlim(-3, 3)
-ax.set_ylim(-3, 3)
-ax.set_zlim(0, 3)
-plot_vector(plt, [0, 0, 0], [origin._x/1000, 0, 0], color = "red")
-plot_vector(plt, [0, 0, 0], [0, origin._y/1000, 0], color = "green")
-plot_vector(plt, [0, 0, 0], [0, 0, origin._z/1000], color = "blue")
-plot_vector(plt, [0, 0, 0], R*tvec/1000, color = "black")
+ax.set_xlabel("x [mm]", fontsize=12)
+ax.set_ylabel("y [mm]", fontsize=12)
+ax.set_zlabel("z [mm]", fontsize=12)
+ax.set_xlim(-1000, 1000)
+ax.set_ylim(-1000, 1000)
+ax.set_zlim(0, 2000)
+plot_vector(plt, [0, 0, 0], [origin._x, 0, 0], color="red")
+plot_vector(plt, [0, 0, 0], [0, origin._y, 0], color="green")
+plot_vector(plt, [0, 0, 0], [0, 0, origin._z], color="blue")
+plot_vector(plt, [0, 0, 0], t_raw, color="black")
 plt.show()
 
 # ref: https://daily-tech.hatenablog.com/entry/2018/02/02/071655
 #      https://python.atelierkobato.com/quiver
+#      https://dev.classmethod.jp/articles/estimate-camera-external-parameter-matrix-2d-camera/
