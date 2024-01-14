@@ -33,28 +33,16 @@ class ObjectBox:
     ], dtype="double")
     return result
 
-# Camera Intrinsic Paramter
-dist_coeffs = np.array([
-  [3.5503921110220771e-01,
-  -1.8089641384590791e+00,
-  -1.3224112624431249e-03,
-  -1.1764534809794213e-03,
-  2.7810334600309656e+00]
-], dtype="double")
-camera_matrix = np.array([
-  [507.67984091855385, 0, 330.27513286880281],
-  [0, 509.84029418345722, 242.96535901758909],
-  [0, 0, 1]
-], dtype="double")
-
 # 画像上のある一点の存在しうる範囲についての関数群 
 
-def get_camera_direction(tvec, rvec, u=camera_matrix[0][2], v=camera_matrix[1][2]):
+def get_camera_direction(camera_matrix, tvec, rvec):
   rmat, _ = cv2.Rodrigues(rvec)
-  r_raw = rmat.T
+  r_raw = rmat
   t_raw = -rmat.T @ tvec
   P = camera_matrix @ np.hstack((r_raw, t_raw))
-  p, d = find_intersection_line(
+  u = camera_matrix[0][2]
+  v = camera_matrix[1][2]
+  d, _ = find_intersection_line(
     P[0][0] - u*P[2][0],
     P[0][1] - u*P[2][1],
     P[0][2] - u*P[2][2],
@@ -63,9 +51,8 @@ def get_camera_direction(tvec, rvec, u=camera_matrix[0][2], v=camera_matrix[1][2
     P[1][1] - v*P[2][1],
     P[1][2] - v*P[2][2],
     P[1][3] - v,
-    specified_x=t_raw[0][0],
   )
-  return (np.array(p, dtype="double"), np.array(d, dtype="double"))
+  return np.array(d)
 
 def find_intersection_line(a1, b1, c1, d1, a2, b2, c2, d2, specified_x=None, specified_y=None, specified_z=None):
   x, y, z = symbols('x y z') # 定義された変数
@@ -102,7 +89,7 @@ def find_intersection_line(a1, b1, c1, d1, a2, b2, c2, d2, specified_x=None, spe
     else:
       point_vector = None
 
-  return point_vector, direction_vector
+  return direction_vector, point_vector
 
 # 
 
@@ -139,7 +126,7 @@ class Perspactive:
   def click_event(self, event, x, y, flags, param): # マウスクリックイベントをハンドルする内部メソッド
     if event == cv2.EVENT_LBUTTONDOWN:
       self.clicked_points[param].append((x, y))
-      print(f"  ({x}, {y})")
+      print(f"Clicked at: ({x}, {y})")
 
   def show_images_and_get_clicks(self): # すべての画像を表示し、クリックされた位置を保存するメソッド
     for i, img in enumerate(self.images):
@@ -153,6 +140,18 @@ class Perspactive:
 
 '''
 in1
+image_points = np.array([
+  (356, 251),
+  (422, 198),
+  (295, 220),
+  (354, 203),
+  (423, 155),
+  (289, 176),
+  (361, 132),
+], dtype="double")
+'''
+'''
+in2
 '''
 image_points = np.array([
   (321, 257),
@@ -163,22 +162,32 @@ image_points = np.array([
   (311, 222),
   (360, 218)
 ], dtype="double")
-u, v = (126, 346)
-
 '''
-in2
+in3
 image_points = np.array([
-  (368, 230),
-  (375, 212),
-  (323, 228),
-  (366, 199),
-  (375, 185),
-  (322, 199),
-  (334, 185)
+  (358, 275),
+  (407, 259),
+  (322, 264),
+  (357, 240),
+  (407, 225),
+  (321, 229),
+  (371, 216),
 ], dtype="double")
-u, v = (638, 330)
 '''
 
+# Camera Intrinsic Paramter
+dist_coeffs = np.array([
+  [3.5503921110220771e-01,
+  -1.8089641384590791e+00,
+  -1.3224112624431249e-03,
+  -1.1764534809794213e-03,
+  2.7810334600309656e+00]
+], dtype="double")
+camera_matrix = np.array([
+  [507.67984091855385, 0, 330.27513286880281],
+  [0, 509.84029418345722, 242.96535901758909],
+  [0, 0, 1]
+], dtype="double")
 
 origin = ObjectBox(469, 348, 238)
 #origin = ObjectBox(217, 325, 138)
@@ -200,7 +209,7 @@ print(camera_matrix)
 print("\nDistortion Coefficient")
 print(dist_coeffs)
 
-#print(origin.object_points())
+print(origin.object_points())
 #print(pers.get_clicked_points(0))
 (success, rvec, tvec) = cv2.solvePnP(origin.object_points(), image_points, camera_matrix, dist_coeffs)
 #(success, rvec, tvec) = cv2.solvePnP(origin.object_points(), pers.get_clicked_points(0), camera_matrix, dist_coeffs)
@@ -219,15 +228,10 @@ t_raw = -R_mat.T @ tvec
 print("\nt_raw")
 print(t_raw)
 
-camera_direction = get_camera_direction(tvec, rvec)
+camera_direction = get_camera_direction(camera_matrix, tvec, rvec)
 print("\nCamera Direction")
 print(camera_direction)
 
-p, d = camera_direction
-print("\nposition")
-print(p)
-print("\ndirection")
-print(d)
 
 # 3Dグラフ描画部------------------
 fig = plt.figure(figsize = (8, 6))
@@ -242,8 +246,8 @@ ax.set_zlim(0, 2000)
 plot_vector(plt, [0, 0, 0], [origin._x, 0, 0], color="red")
 plot_vector(plt, [0, 0, 0], [0, origin._y, 0], color="green")
 plot_vector(plt, [0, 0, 0], [0, 0, origin._z], color="blue")
-#plot_vector(plt, [0, 0, 0], t_raw, color="black")
-plot_vector(plt, p, d/100, color="green")
+plot_vector(plt, [0, 0, 0], t_raw, color="black")
+plot_vector(plt, t_raw, camera_direction/100, color="green")
 plt.show()
 
 # ---------------
